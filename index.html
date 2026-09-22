@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="المشتركين">
+<meta name="theme-color" content="#0F1B2D">
+<link rel="manifest" href='data:application/manifest+json,{"name":"%D8%A5%D8%AF%D8%A7%D8%B1%D8%A9%20%D8%A7%D9%84%D9%85%D8%B4%D8%AA%D8%B1%D9%83%D9%8A%D9%86","short_name":"%D8%A7%D9%84%D9%85%D8%B4%D8%AA%D8%B1%D9%83%D9%8A%D9%86","start_url":".","display":"standalone","background_color":"%230F1B2D","theme_color":"%230F1B2D","dir":"rtl","lang":"ar"}'>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230F1B2D'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='%23E8A33D' font-family='sans-serif'%3E%D9%85%3C/text%3E%3C/svg%3E">
+<title>إدارة المشتركين</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0F1B2D;
+    --bg-elevated:#16263F;
+    --bg-card:#1B2E4C;
+    --border:#2B3F5E;
+    --ink:#F4F1EA;
+    --ink-dim:#A9B6CC;
+    --gold:#E8A33D;
+    --green:#4FAE83;
+    --rust:#C1584B;
+    --font-display:'Cairo', system-ui, sans-serif;
+    --font-body:'Tajawal', system-ui, sans-serif;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:inherit; margin:0; padding:0;}
+  html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
+  body{
+    height:100%;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:760px; margin:0 auto; min-height:100%; display:flex; flex-direction:column;}
+
+  header.top{
+    padding:22px 20px 18px;
+    border-bottom:1px solid var(--border);
+    position:sticky; top:0; z-index:10;
+    background:var(--bg);
+    padding-top:calc(22px + env(safe-area-inset-top,0px));
+  }
+  header.top h1{
+    font-family:var(--font-display);
+    font-weight:900;
+    font-size:22px;
+    letter-spacing:.2px;
+  }
+  header.top p{color:var(--ink-dim); font-size:13.5px; margin-top:4px;}
+
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:10px;
+    padding:16px 20px;
+  }
+  .stat{
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:12px 10px;
+    text-align:center;
+  }
+  .stat b{
+    display:block;
+    font-family:var(--font-display);
+    font-size:20px;
+    font-weight:700;
+  }
+  .stat span{font-size:11px; color:var(--ink-dim);}
+  .stat.warn b{color:var(--gold);}
+  .stat.bad b{color:var(--rust);}
+  .stat.good b{color:var(--green);}
+
+  .controls{padding:4px 20px 12px; display:flex; flex-direction:column; gap:10px;}
+  .search input{
+    width:100%;
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px 14px;
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:14.5px;
+  }
+  .search input::placeholder{color:var(--ink-dim);}
+  .search input:focus{outline:2px solid var(--gold); outline-offset:1px;}
+
+  .tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{
+    flex:0 0 auto;
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--ink-dim);
+    padding:7px 14px;
+    border-radius:999px;
+    font-family:var(--font-body);
+    font-size:13px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .tab.active{background:var(--gold); border-color:var(--gold); color:#1A1204; font-weight:700;}
+
+  main{flex:1; padding:6px 20px 100px;}
+  .empty{
+    text-align:center; color:var(--ink-dim); padding:60px 20px; font-size:14px;
+  }
+  .empty b{display:block; font-family:var(--font-display); color:var(--ink); font-size:17px; margin-bottom:6px;}
+
+  .card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:14px 16px;
+    margin-bottom:10px;
+    position:relative;
+  }
+  .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .card-name{font-family:var(--font-display); font-weight:700; font-size:16px;}
+  .card-type{color:var(--ink-dim); font-size:12.5px; margin-top:2px;}
+  .badge{
+    font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px;
+    white-space:nowrap; flex:0 0 auto;
+  }
+  .badge.active{background:rgba(79,174,131,.16); color:var(--green);}
+  .badge.soon{background:rgba(232,163,61,.18); color:var(--gold);}
+  .badge.expired{background:rgba(193,88,75,.18); color:var(--rust);}
+
+  .card-meta{
+    display:flex; flex-wrap:wrap; gap:10px 18px;
+    margin-top:10px; font-size:12.5px; color:var(--ink-dim);
+  }
+  .card-meta b{color:var(--ink); font-weight:600;}
+  .debt-line{color:var(--rust); font-weight:700;}
+
+  .card-actions{display:flex; gap:8px; margin-top:12px;}
+  .card-actions button{
+    flex:1;
+    border:1px solid var(--border);
+    background:var(--bg-elevated);
+    color:var(--ink);
+    padding:9px 8px;
+    border-radius:10px;
+    font-family:var(--font-body);
+    font-size:12.5px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:5px;
+  }
+  .card-actions button.wa{color:var(--green); border-color:rgba(79,174,131,.35);}
+  .card-actions button.del{color:var(--rust); border-color:rgba(193,88,75,.35);}
+
+  .fab{
+    position:fixed;
+    bottom:calc(24px + env(safe-area-inset-bottom,0px));
+    left:50%; transform:translateX(-50%);
+    max-width:760px; width:calc(100% - 40px);
+    display:flex; justify-content:center;
+    pointer-events:none;
+  }
+  .fab button{
+    pointer-events:auto;
+    background:var(--gold);
+    color:#1A1204;
+    border:none;
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:14.5px;
+    padding:14px 30px;
+    border-radius:999px;
+    box-shadow:0 10px 24px rgba(0,0,0,.35);
+    cursor:pointer;
+  }
+
+  .sheet-overlay{
+    position:fixed; inset:0; background:rgba(6,10,18,.6);
+    display:none; align-items:flex-end; justify-content:center; z-index:50;
+  }
+  .sheet-overlay.open{display:flex;}
+  .sheet{
+    background:var(--bg-elevated);
+    width:100%; max-width:760px;
+    border-radius:22px 22px 0 0;
+    padding:20px 20px calc(24px + env(safe-area-inset-bottom,0px));
+    max-height:88vh; overflow-y:auto;
+    border-top:1px solid var(--border);
+  }
+  .sheet h2{font-family:var(--font-display); font-size:18px; margin-bottom:16px;}
+  .field{margin-bottom:13px;}
+  .field label{display:block; font-size:12.5px; color:var(--ink-dim); margin-bottom:5px;}
+  .field input, .field textarea{
+    width:100%; background:var(--bg); border:1px solid var(--border);
+    color:var(--ink); border-radius:10px; padding:11px 12px;
+    font-family:var(--font-body); font-size:14.5px;
+  }
+  .field textarea{resize:vertical; min-height:60px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .sheet-actions{display:flex; gap:10px; margin-top:18px;}
+  .sheet-actions button{
+    flex:1; padding:13px; border-radius:12px; font-family:var(--font-display);
+    font-weight:700; font-size:14.5px; border:none; cursor:pointer;
+  }
+  .btn-save{background:var(--gold); color:#1A1204;}
+  .btn-cancel{background:transparent; border:1px solid var(--border)!important; color:var(--ink-dim);}
+
+  @media (max-width:420px){
+    .stats{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <h1>إدارة المشتركين</h1>
+    <p>متابعة الاشتراكات، المواعيد، والمستحقات</p>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="controls">
+    <div class="search">
+      <input id="search" type="text" placeholder="ابحث بالاسم أو رقم الهاتف">
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-filter="all">الكل</button>
+      <button class="tab" data-filter="active">نشط</button>
+      <button class="tab" data-filter="soon">قارب على الانتهاء</button>
+      <button class="tab" data-filter="expired">منتهي</button>
+      <button class="tab" data-filter="debt">عليهم دين</button>
+    </div>
+  </div>
+
+  <main id="list"></main>
+
+  <div class="fab">
+    <button id="openAdd">+ إضافة مشترك</button>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="overlay">
+  <div class="sheet">
+    <h2 id="sheetTitle">إضافة مشترك</h2>
+    <input type="hidden" id="editId">
+    <div class="field">
+      <label>الاسم</label>
+      <input id="f-name" type="text" placeholder="مثال: أحمد محمد">
+    </div>
+    <div class="field">
+      <label>رقم الهاتف (مع رمز الدولة للواتساب، مثال: 9647701234567)</label>
+      <input id="f-phone" type="tel" placeholder="9647xxxxxxxxx">
+    </div>
+    <div class="field">
+      <label>نوع الاشتراك</label>
+      <input id="f-type" type="text" placeholder="مثال: قناة يوتيوب، تطبيق، محتوى تعليمي">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>تاريخ البدء</label>
+        <input id="f-start" type="date">
+      </div>
+      <div class="field">
+        <label>تاريخ الانتهاء</label>
+        <input id="f-end" type="date">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>مبلغ الاشتراك</label>
+        <input id="f-amount" type="number" inputmode="decimal" placeholder="0">
+      </div>
+      <div class="field">
+        <label>المبلغ المدفوع</label>
+        <input id="f-paid" type="number" inputmode="decimal" placeholder="0">
+      </div>
+    </div>
+    <div class="field">
+      <label>ملاحظات (اختياري)</label>
+      <textarea id="f-notes" placeholder="أي تفاصيل إضافية"></textarea>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="cancelBtn">إلغاء</button>
+      <button class="btn-save" id="saveBtn">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'subscribers_v1';
+const SOON_DAYS = 7;
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function saveData(data){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+  catch(e){ console.error('تعذر الحفظ', e); }
+}
+
+let subscribers = loadData();
+let currentFilter = 'all';
+let searchTerm = '';
+
+function daysUntil(dateStr){
+  const end = new Date(dateStr + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  return Math.round((end - today) / 86400000);
+}
+
+function getStatus(sub){
+  const d = daysUntil(sub.end);
+  if(d < 0) return 'expired';
+  if(d <= SOON_DAYS) return 'soon';
+  return 'active';
+}
+
+function getDebt(sub){
+  const amount = parseFloat(sub.amount) || 0;
+  const paid = parseFloat(sub.paid) || 0;
+  return Math.max(0, amount - paid);
+}
+
+function statusLabel(status, days){
+  if(status === 'expired') return `منتهي منذ ${Math.abs(days)} يوم`;
+  if(status === 'soon') return days === 0 ? 'ينتهي اليوم' : `يتبقى ${days} يوم`;
+  return 'نشط';
+}
+
+function renderStats(){
+  const active = subscribers.filter(s => getStatus(s) === 'active').length;
+  const soon = subscribers.filter(s => getStatus(s) === 'soon').length;
+  const expired = subscribers.filter(s => getStatus(s) === 'expired').length;
+  const totalDebt = subscribers.reduce((sum, s) => sum + getDebt(s), 0);
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat good"><b>${active}</b><span>نشط</span></div>
+    <div class="stat warn"><b>${soon}</b><span>قارب الانتهاء</span></div>
+    <div class="stat bad"><b>${expired}</b><span>منتهي</span></div>
+    <div class="stat bad"><b>${totalDebt.toLocaleString('ar')}</b><span>إجمالي الديون</span></div>
+  `;
+}
+
+function buildWhatsappLink(sub){
+  const status = getStatus(sub);
+  const debt = getDebt(sub);
+  const phone = (sub.phone || '').replace(/[^0-9]/g, '');
+  let msg = `مرحباً ${sub.name}،\n`;
+  if(status === 'expired'){
+    msg += `نود إعلامكم بأن اشتراككم في "${sub.type}" قد انتهى بتاريخ ${sub.end}. نرجو التجديد في أقرب وقت.`;
+  }else{
+    const d = daysUntil(sub.end);
+    msg += `نود تذكيركم بأن اشتراككم في "${sub.type}" سينتهي خلال ${d} يوم (بتاريخ ${sub.end}). نرجو التجديد قبل الانتهاء.`;
+  }
+  if(debt > 0){
+    msg += `\nكما نود التنويه إلى وجود مبلغ متبقٍ قدره ${debt.toLocaleString('ar')}.`;
+  }
+  msg += `\nشكراً لكم.`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+}
+
+function matchesFilter(sub){
+  const status = getStatus(sub);
+  const debt = getDebt(sub);
+  if(currentFilter === 'active') return status === 'active';
+  if(currentFilter === 'soon') return status === 'soon';
+  if(currentFilter === 'expired') return status === 'expired';
+  if(currentFilter === 'debt') return debt > 0;
+  return true;
+}
+
+function matchesSearch(sub){
+  if(!searchTerm) return true;
+  const t = searchTerm.toLowerCase();
+  return (sub.name || '').toLowerCase().includes(t) || (sub.phone || '').includes(t);
+}
+
+function renderList(){
+  const list = document.getElementById('list');
+  const items = subscribers
+    .filter(matchesFilter)
+    .filter(matchesSearch)
+    .sort((a,b) => daysUntil(a.end) - daysUntil(b.end));
+
+  if(items.length === 0){
+    list.innerHTML = `<div class="empty"><b>لا يوجد مشتركون هنا</b>جرّب تغيير الفلتر أو أضف مشتركاً جديداً</div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(sub => {
+    const status = getStatus(sub);
+    const days = daysUntil(sub.end);
+    const debt = getDebt(sub);
+    const badgeClass = status;
+    return `
+      <div class="card">
+        <div class="card-top">
+          <div>
+            <div class="card-name">${escapeHtml(sub.name)}</div>
+            <div class="card-type">${escapeHtml(sub.type || '—')}</div>
+          </div>
+          <span class="badge ${badgeClass}">${statusLabel(status, days)}</span>
+        </div>
+        <div class="card-meta">
+          <span>📞 <b>${escapeHtml(sub.phone || '—')}</b></span>
+          <span>📅 ينتهي <b>${sub.end}</b></span>
+          ${debt > 0 ? `<span class="debt-line">💰 دين متبقٍ: ${debt.toLocaleString('ar')}</span>` : ''}
+        </div>
+        <div class="card-actions">
+          <button class="wa" onclick="sendWhatsapp('${sub.id}')">💬 واتساب</button>
+          <button onclick="openEdit('${sub.id}')">✏️ تعديل</button>
+          <button class="del" onclick="deleteSub('${sub.id}')">🗑️ حذف</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+function render(){
+  renderStats();
+  renderList();
+}
+
+function sendWhatsapp(id){
+  const sub = subscribers.find(s => s.id === id);
+  if(!sub) return;
+  if(!sub.phone){
+    alert('لا يوجد رقم هاتف مسجل لهذا المشترك');
+    return;
+  }
+  window.open(buildWhatsappLink(sub), '_blank');
+}
+
+function deleteSub(id){
+  if(!confirm('هل أنت متأكد من حذف هذا المشترك؟')) return;
+  subscribers = subscribers.filter(s => s.id !== id);
+  saveData(subscribers);
+  render();
+}
+
+function openEdit(id){
+  const sub = subscribers.find(s => s.id === id);
+  if(!sub) return;
+  document.getElementById('sheetTitle').textContent = 'تعديل مشترك';
+  document.getElementById('editId').value = sub.id;
+  document.getElementById('f-name').value = sub.name || '';
+  document.getElementById('f-phone').value = sub.phone || '';
+  document.getElementById('f-type').value = sub.type || '';
+  document.getElementById('f-start').value = sub.start || '';
+  document.getElementById('f-end').value = sub.end || '';
+  document.getElementById('f-amount').value = sub.amount || '';
+  document.getElementById('f-paid').value = sub.paid || '';
+  document.getElementById('f-notes').value = sub.notes || '';
+  openSheet();
+}
+
+function openSheet(){
+  document.getElementById('overlay').classList.add('open');
+}
+function closeSheet(){
+  document.getElementById('overlay').classList.remove('open');
+  clearForm();
+}
+function clearForm(){
+  document.getElementById('sheetTitle').textContent = 'إضافة مشترك';
+  document.getElementById('editId').value = '';
+  ['f-name','f-phone','f-type','f-start','f-end','f-amount','f-paid','f-notes']
+    .forEach(id => document.getElementById(id).value = '');
+}
+
+document.getElementById('openAdd').addEventListener('click', () => {
+  clearForm();
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('f-start').value = today;
+  openSheet();
+});
+document.getElementById('cancelBtn').addEventListener('click', closeSheet);
+document.getElementById('overlay').addEventListener('click', (e) => {
+  if(e.target.id === 'overlay') closeSheet();
+});
+
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const name = document.getElementById('f-name').value.trim();
+  const end = document.getElementById('f-end').value;
+  if(!name){ alert('يرجى إدخال اسم المشترك'); return; }
+  if(!end){ alert('يرجى إدخال تاريخ الانتهاء'); return; }
+
+  const id = document.getElementById('editId').value;
+  const record = {
+    id: id || (Date.now().toString(36) + Math.random().toString(36).slice(2,7)),
+    name,
+    phone: document.getElementById('f-phone').value.trim(),
+    type: document.getElementById('f-type').value.trim(),
+    start: document.getElementById('f-start').value,
+    end,
+    amount: document.getElementById('f-amount').value,
+    paid: document.getElementById('f-paid').value,
+    notes: document.getElementById('f-notes').value.trim()
+  };
+
+  if(id){
+    subscribers = subscribers.map(s => s.id === id ? record : s);
+  }else{
+    subscribers.push(record);
+  }
+  saveData(subscribers);
+  closeSheet();
+  render();
+});
+
+document.getElementById('search').addEventListener('input', (e) => {
+  searchTerm = e.target.value;
+  renderList();
+});
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentFilter = tab.dataset.filter;
+    renderList();
+  });
+});
+
+render();
+</script>
+</body>
+</html>
