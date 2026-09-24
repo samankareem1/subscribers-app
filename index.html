@@ -14,224 +14,136 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
-    --bg:#0F1B2D;
-    --bg-elevated:#16263F;
-    --bg-card:#1B2E4C;
-    --border:#2B3F5E;
-    --ink:#F4F1EA;
-    --ink-dim:#A9B6CC;
-    --gold:#E8A33D;
-    --green:#4FAE83;
-    --rust:#C1584B;
-    --font-display:'Cairo', system-ui, sans-serif;
-    --font-body:'Tajawal', system-ui, sans-serif;
-    box-sizing:border-box;
-    padding-top:env(safe-area-inset-top,0px);
-    padding-bottom:env(safe-area-inset-bottom,0px);
+    --bg:#0F1B2D; --bg-elevated:#16263F; --bg-card:#1B2E4C; --border:#2B3F5E;
+    --ink:#F4F1EA; --ink-dim:#A9B6CC; --gold:#E8A33D; --green:#4FAE83; --rust:#C1584B;
+    --font-display:'Cairo', system-ui, sans-serif; --font-body:'Tajawal', system-ui, sans-serif;
+    box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
   }
   *{box-sizing:inherit; margin:0; padding:0;}
   html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
-  body{
-    height:100%;
-    background:var(--bg);
-    color:var(--ink);
-    font-family:var(--font-body);
-    line-height:1.6;
-    -webkit-font-smoothing:antialiased;
-  }
+  body{height:100%; background:var(--bg); color:var(--ink); font-family:var(--font-body); line-height:1.6; -webkit-font-smoothing:antialiased;}
   .app{max-width:760px; margin:0 auto; min-height:100%; display:flex; flex-direction:column;}
+  .hidden{display:none !important;}
 
-  header.top{
-    padding:22px 20px 18px;
-    border-bottom:1px solid var(--border);
-    position:sticky; top:0; z-index:10;
-    background:var(--bg);
-    padding-top:calc(22px + env(safe-area-inset-top,0px));
-  }
-  header.top h1{
-    font-family:var(--font-display);
-    font-weight:900;
-    font-size:22px;
-    letter-spacing:.2px;
-  }
+  .auth-screen{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;}
+  .auth-box{width:100%; max-width:380px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:20px; padding:28px 24px;}
+  .auth-box h1{font-family:var(--font-display); font-weight:900; font-size:22px; text-align:center; margin-bottom:4px;}
+  .auth-box p.sub{text-align:center; color:var(--ink-dim); font-size:13px; margin-bottom:22px;}
+  .auth-tabs{display:flex; background:var(--bg); border-radius:12px; padding:4px; margin-bottom:20px; border:1px solid var(--border);}
+  .auth-tab{flex:1; text-align:center; padding:9px; border-radius:9px; font-size:14px; cursor:pointer; color:var(--ink-dim); font-weight:700;}
+  .auth-tab.active{background:var(--gold); color:#1A1204;}
+  .auth-field{margin-bottom:13px;}
+  .auth-field label{display:block; font-size:12.5px; color:var(--ink-dim); margin-bottom:5px;}
+  .auth-field input{width:100%; background:var(--bg); border:1px solid var(--border); color:var(--ink); border-radius:10px; padding:12px; font-family:var(--font-body); font-size:14.5px;}
+  .auth-btn{width:100%; background:var(--gold); color:#1A1204; border:none; padding:13px; border-radius:12px; font-family:var(--font-display); font-weight:700; font-size:15px; cursor:pointer; margin-top:6px;}
+  .auth-btn:disabled{opacity:.6;}
+  .auth-msg{font-size:13px; text-align:center; margin-top:14px; padding:10px; border-radius:10px;}
+  .auth-msg.error{background:rgba(193,88,75,.15); color:var(--rust);}
+  .auth-msg.success{background:rgba(79,174,131,.15); color:var(--green);}
+
+  header.top{padding:22px 20px 18px; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; background:var(--bg); padding-top:calc(22px + env(safe-area-inset-top,0px)); display:flex; justify-content:space-between; align-items:flex-start;}
+  header.top h1{font-family:var(--font-display); font-weight:900; font-size:22px;}
   header.top p{color:var(--ink-dim); font-size:13.5px; margin-top:4px;}
+  .logout-btn{background:transparent; border:1px solid var(--border); color:var(--ink-dim); font-size:12.5px; padding:8px 12px; border-radius:10px; cursor:pointer; font-family:var(--font-body); white-space:nowrap;}
 
-  .stats{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:10px;
-    padding:16px 20px;
-  }
-  .stat{
-    background:var(--bg-elevated);
-    border:1px solid var(--border);
-    border-radius:14px;
-    padding:12px 10px;
-    text-align:center;
-  }
-  .stat b{
-    display:block;
-    font-family:var(--font-display);
-    font-size:20px;
-    font-weight:700;
-  }
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:16px 20px;}
+  .stat{background:var(--bg-elevated); border:1px solid var(--border); border-radius:14px; padding:12px 10px; text-align:center;}
+  .stat b{display:block; font-family:var(--font-display); font-size:20px; font-weight:700;}
   .stat span{font-size:11px; color:var(--ink-dim);}
-  .stat.warn b{color:var(--gold);}
-  .stat.bad b{color:var(--rust);}
-  .stat.good b{color:var(--green);}
+  .stat.warn b{color:var(--gold);} .stat.bad b{color:var(--rust);} .stat.good b{color:var(--green);}
 
   .controls{padding:4px 20px 12px; display:flex; flex-direction:column; gap:10px;}
-  .search input{
-    width:100%;
-    background:var(--bg-elevated);
-    border:1px solid var(--border);
-    border-radius:12px;
-    padding:12px 14px;
-    color:var(--ink);
-    font-family:var(--font-body);
-    font-size:14.5px;
-  }
+  .search input{width:100%; background:var(--bg-elevated); border:1px solid var(--border); border-radius:12px; padding:12px 14px; color:var(--ink); font-family:var(--font-body); font-size:14.5px;}
   .search input::placeholder{color:var(--ink-dim);}
   .search input:focus{outline:2px solid var(--gold); outline-offset:1px;}
-
   .tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px;}
   .tabs::-webkit-scrollbar{display:none;}
-  .tab{
-    flex:0 0 auto;
-    background:transparent;
-    border:1px solid var(--border);
-    color:var(--ink-dim);
-    padding:7px 14px;
-    border-radius:999px;
-    font-family:var(--font-body);
-    font-size:13px;
-    cursor:pointer;
-    white-space:nowrap;
-  }
+  .tab{flex:0 0 auto; background:transparent; border:1px solid var(--border); color:var(--ink-dim); padding:7px 14px; border-radius:999px; font-family:var(--font-body); font-size:13px; cursor:pointer; white-space:nowrap;}
   .tab.active{background:var(--gold); border-color:var(--gold); color:#1A1204; font-weight:700;}
 
   main{flex:1; padding:6px 20px 100px;}
-  .empty{
-    text-align:center; color:var(--ink-dim); padding:60px 20px; font-size:14px;
-  }
+  .empty{text-align:center; color:var(--ink-dim); padding:60px 20px; font-size:14px;}
   .empty b{display:block; font-family:var(--font-display); color:var(--ink); font-size:17px; margin-bottom:6px;}
 
-  .card{
-    background:var(--bg-card);
-    border:1px solid var(--border);
-    border-radius:16px;
-    padding:14px 16px;
-    margin-bottom:10px;
-    position:relative;
-  }
+  .card{background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:14px 16px; margin-bottom:10px; position:relative;}
   .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
   .card-name{font-family:var(--font-display); font-weight:700; font-size:16px;}
   .card-type{color:var(--ink-dim); font-size:12.5px; margin-top:2px;}
-  .badge{
-    font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px;
-    white-space:nowrap; flex:0 0 auto;
-  }
+  .badge{font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; white-space:nowrap; flex:0 0 auto;}
   .badge.active{background:rgba(79,174,131,.16); color:var(--green);}
   .badge.soon{background:rgba(232,163,61,.18); color:var(--gold);}
   .badge.expired{background:rgba(193,88,75,.18); color:var(--rust);}
-
-  .card-meta{
-    display:flex; flex-wrap:wrap; gap:10px 18px;
-    margin-top:10px; font-size:12.5px; color:var(--ink-dim);
-  }
+  .card-meta{display:flex; flex-wrap:wrap; gap:10px 18px; margin-top:10px; font-size:12.5px; color:var(--ink-dim);}
   .card-meta b{color:var(--ink); font-weight:600;}
   .debt-line{color:var(--rust); font-weight:700;}
-
   .card-actions{display:flex; gap:8px; margin-top:12px;}
-  .card-actions button{
-    flex:1;
-    border:1px solid var(--border);
-    background:var(--bg-elevated);
-    color:var(--ink);
-    padding:9px 8px;
-    border-radius:10px;
-    font-family:var(--font-body);
-    font-size:12.5px;
-    cursor:pointer;
-    display:flex; align-items:center; justify-content:center; gap:5px;
-  }
+  .card-actions button{flex:1; border:1px solid var(--border); background:var(--bg-elevated); color:var(--ink); padding:9px 8px; border-radius:10px; font-family:var(--font-body); font-size:12.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px;}
   .card-actions button.wa{color:var(--green); border-color:rgba(79,174,131,.35);}
   .card-actions button.del{color:var(--rust); border-color:rgba(193,88,75,.35);}
 
-  .fab{
-    position:fixed;
-    bottom:calc(24px + env(safe-area-inset-bottom,0px));
-    left:50%; transform:translateX(-50%);
-    max-width:760px; width:calc(100% - 40px);
-    display:flex; justify-content:center;
-    pointer-events:none;
-  }
-  .fab button{
-    pointer-events:auto;
-    background:var(--gold);
-    color:#1A1204;
-    border:none;
-    font-family:var(--font-display);
-    font-weight:700;
-    font-size:14.5px;
-    padding:14px 30px;
-    border-radius:999px;
-    box-shadow:0 10px 24px rgba(0,0,0,.35);
-    cursor:pointer;
-  }
+  .fab{position:fixed; bottom:calc(24px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%); max-width:760px; width:calc(100% - 40px); display:flex; justify-content:center; pointer-events:none;}
+  .fab button{pointer-events:auto; background:var(--gold); color:#1A1204; border:none; font-family:var(--font-display); font-weight:700; font-size:14.5px; padding:14px 30px; border-radius:999px; box-shadow:0 10px 24px rgba(0,0,0,.35); cursor:pointer;}
 
-  .sheet-overlay{
-    position:fixed; inset:0; background:rgba(6,10,18,.6);
-    display:none; align-items:flex-end; justify-content:center; z-index:50;
-  }
+  .sheet-overlay{position:fixed; inset:0; background:rgba(6,10,18,.6); display:none; align-items:flex-end; justify-content:center; z-index:50;}
   .sheet-overlay.open{display:flex;}
-  .sheet{
-    background:var(--bg-elevated);
-    width:100%; max-width:760px;
-    border-radius:22px 22px 0 0;
-    padding:20px 20px calc(24px + env(safe-area-inset-bottom,0px));
-    max-height:88vh; overflow-y:auto;
-    border-top:1px solid var(--border);
-  }
+  .sheet{background:var(--bg-elevated); width:100%; max-width:760px; border-radius:22px 22px 0 0; padding:20px 20px calc(24px + env(safe-area-inset-bottom,0px)); max-height:88vh; overflow-y:auto; border-top:1px solid var(--border);}
   .sheet h2{font-family:var(--font-display); font-size:18px; margin-bottom:16px;}
   .field{margin-bottom:13px;}
   .field label{display:block; font-size:12.5px; color:var(--ink-dim); margin-bottom:5px;}
-  .field input, .field textarea{
-    width:100%; background:var(--bg); border:1px solid var(--border);
-    color:var(--ink); border-radius:10px; padding:11px 12px;
-    font-family:var(--font-body); font-size:14.5px;
-  }
+  .field input, .field textarea{width:100%; background:var(--bg); border:1px solid var(--border); color:var(--ink); border-radius:10px; padding:11px 12px; font-family:var(--font-body); font-size:14.5px;}
   .field textarea{resize:vertical; min-height:60px;}
   .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   .sheet-actions{display:flex; gap:10px; margin-top:18px;}
-  .sheet-actions button{
-    flex:1; padding:13px; border-radius:12px; font-family:var(--font-display);
-    font-weight:700; font-size:14.5px; border:none; cursor:pointer;
-  }
+  .sheet-actions button{flex:1; padding:13px; border-radius:12px; font-family:var(--font-display); font-weight:700; font-size:14.5px; border:none; cursor:pointer;}
   .btn-save{background:var(--gold); color:#1A1204;}
   .btn-cancel{background:transparent; border:1px solid var(--border)!important; color:var(--ink-dim);}
 
-  @media (max-width:420px){
-    .stats{grid-template-columns:repeat(2,1fr);}
-  }
+  .loading-screen{min-height:100vh; display:flex; align-items:center; justify-content:center; color:var(--ink-dim); font-size:14px;}
+
+  @media (max-width:420px){ .stats{grid-template-columns:repeat(2,1fr);} }
 </style>
 </head>
 <body>
-<div class="app">
 
-  <header class="top">
+<div id="loadingScreen" class="loading-screen">جاري التحميل...</div>
+
+<div id="authScreen" class="auth-screen hidden">
+  <div class="auth-box">
     <h1>إدارة المشتركين</h1>
-    <p>متابعة الاشتراكات، المواعيد، والمستحقات</p>
+    <p class="sub">سجّل دخولك لإدارة مشتركيك</p>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tabLogin">دخول</div>
+      <div class="auth-tab" id="tabSignup">حساب جديد</div>
+    </div>
+    <div class="auth-field">
+      <label>البريد الإلكتروني</label>
+      <input type="email" id="authEmail" placeholder="example@email.com">
+    </div>
+    <div class="auth-field">
+      <label>كلمة المرور</label>
+      <input type="password" id="authPassword" placeholder="6 أحرف على الأقل">
+    </div>
+    <button class="auth-btn" id="authSubmit">دخول</button>
+    <div id="authMsg"></div>
+  </div>
+</div>
+
+<div id="mainApp" class="app hidden">
+  <header class="top">
+    <div>
+      <h1>إدارة المشتركين</h1>
+      <p>متابعة الاشتراكات، المواعيد، والمستحقات</p>
+    </div>
+    <button class="logout-btn" id="logoutBtn">خروج</button>
   </header>
 
   <div class="stats" id="stats"></div>
 
   <div class="controls">
-    <div class="search">
-      <input id="search" type="text" placeholder="ابحث بالاسم أو رقم الهاتف">
-    </div>
+    <div class="search"><input id="search" type="text" placeholder="ابحث بالاسم أو رقم الهاتف"></div>
     <div class="tabs" id="tabs">
       <button class="tab active" data-filter="all">الكل</button>
       <button class="tab" data-filter="active">نشط</button>
@@ -243,51 +155,25 @@
 
   <main id="list"></main>
 
-  <div class="fab">
-    <button id="openAdd">+ إضافة مشترك</button>
-  </div>
+  <div class="fab"><button id="openAdd">+ إضافة مشترك</button></div>
 </div>
 
 <div class="sheet-overlay" id="overlay">
   <div class="sheet">
     <h2 id="sheetTitle">إضافة مشترك</h2>
     <input type="hidden" id="editId">
-    <div class="field">
-      <label>الاسم</label>
-      <input id="f-name" type="text" placeholder="مثال: أحمد محمد">
-    </div>
-    <div class="field">
-      <label>رقم الهاتف (مع رمز الدولة للواتساب، مثال: 9647701234567)</label>
-      <input id="f-phone" type="tel" placeholder="9647xxxxxxxxx">
-    </div>
-    <div class="field">
-      <label>نوع الاشتراك</label>
-      <input id="f-type" type="text" placeholder="مثال: قناة يوتيوب، تطبيق، محتوى تعليمي">
+    <div class="field"><label>الاسم</label><input id="f-name" type="text" placeholder="مثال: أحمد محمد"></div>
+    <div class="field"><label>رقم الهاتف (مع رمز الدولة للواتساب)</label><input id="f-phone" type="tel" placeholder="9647xxxxxxxxx"></div>
+    <div class="field"><label>نوع الاشتراك</label><input id="f-type" type="text" placeholder="مثال: قناة، تطبيق، محتوى"></div>
+    <div class="row2">
+      <div class="field"><label>تاريخ البدء</label><input id="f-start" type="date"></div>
+      <div class="field"><label>تاريخ الانتهاء</label><input id="f-end" type="date"></div>
     </div>
     <div class="row2">
-      <div class="field">
-        <label>تاريخ البدء</label>
-        <input id="f-start" type="date">
-      </div>
-      <div class="field">
-        <label>تاريخ الانتهاء</label>
-        <input id="f-end" type="date">
-      </div>
+      <div class="field"><label>مبلغ الاشتراك</label><input id="f-amount" type="number" inputmode="decimal" placeholder="0"></div>
+      <div class="field"><label>المبلغ المدفوع</label><input id="f-paid" type="number" inputmode="decimal" placeholder="0"></div>
     </div>
-    <div class="row2">
-      <div class="field">
-        <label>مبلغ الاشتراك</label>
-        <input id="f-amount" type="number" inputmode="decimal" placeholder="0">
-      </div>
-      <div class="field">
-        <label>المبلغ المدفوع</label>
-        <input id="f-paid" type="number" inputmode="decimal" placeholder="0">
-      </div>
-    </div>
-    <div class="field">
-      <label>ملاحظات (اختياري)</label>
-      <textarea id="f-notes" placeholder="أي تفاصيل إضافية"></textarea>
-    </div>
+    <div class="field"><label>ملاحظات (اختياري)</label><textarea id="f-notes"></textarea></div>
     <div class="sheet-actions">
       <button class="btn-cancel" id="cancelBtn">إلغاء</button>
       <button class="btn-save" id="saveBtn">حفظ</button>
@@ -296,48 +182,126 @@
 </div>
 
 <script>
-const STORAGE_KEY = 'subscribers_v1';
+const SUPABASE_URL = 'https://qyijgbhpdbdrpgwikklu.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_V3q3qks1J5RuiDcoQ3E6tw_10xXdP7c';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const SOON_DAYS = 7;
-
-function loadData(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  }catch(e){ return []; }
-}
-function saveData(data){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
-  catch(e){ console.error('تعذر الحفظ', e); }
-}
-
-let subscribers = loadData();
+let currentUser = null;
+let mySessionId = null;
+let sessionChannel = null;
+let subscribers = [];
 let currentFilter = 'all';
 let searchTerm = '';
+let authMode = 'login';
+
+const loadingScreen = document.getElementById('loadingScreen');
+const authScreen = document.getElementById('authScreen');
+const mainApp = document.getElementById('mainApp');
+
+function showLoading(){ loadingScreen.classList.remove('hidden'); authScreen.classList.add('hidden'); mainApp.classList.add('hidden'); }
+function showAuth(){ loadingScreen.classList.add('hidden'); authScreen.classList.remove('hidden'); mainApp.classList.add('hidden'); }
+function showApp(){ loadingScreen.classList.add('hidden'); authScreen.classList.add('hidden'); mainApp.classList.remove('hidden'); }
+
+document.getElementById('tabLogin').addEventListener('click', () => setAuthMode('login'));
+document.getElementById('tabSignup').addEventListener('click', () => setAuthMode('signup'));
+function setAuthMode(mode){
+  authMode = mode;
+  document.getElementById('tabLogin').classList.toggle('active', mode === 'login');
+  document.getElementById('tabSignup').classList.toggle('active', mode === 'signup');
+  document.getElementById('authSubmit').textContent = mode === 'login' ? 'دخول' : 'إنشاء الحساب';
+  document.getElementById('authMsg').innerHTML = '';
+}
+function showAuthMsg(text, type){ document.getElementById('authMsg').innerHTML = `<div class="auth-msg ${type}">${text}</div>`; }
+
+document.getElementById('authSubmit').addEventListener('click', async () => {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  if(!email || !password){ showAuthMsg('يرجى تعبئة الحقلين', 'error'); return; }
+  const btn = document.getElementById('authSubmit');
+  btn.disabled = true;
+  document.getElementById('authMsg').innerHTML = '';
+
+  if(authMode === 'login'){
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    btn.disabled = false;
+    if(error){ showAuthMsg('بيانات الدخول غير صحيحة', 'error'); return; }
+    await onLoggedIn(data.user);
+  }else{
+    const { data, error } = await sb.auth.signUp({ email, password });
+    btn.disabled = false;
+    if(error){ showAuthMsg(error.message.includes('already') ? 'هذا البريد مسجّل مسبقاً' : 'تعذر إنشاء الحساب', 'error'); return; }
+    if(data.session){
+      await onLoggedIn(data.user);
+    }else{
+      showAuthMsg('تم إنشاء الحساب! تحقق من بريدك الإلكتروني لتفعيله ثم سجّل الدخول.', 'success');
+      setAuthMode('login');
+    }
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  if(sessionChannel) sb.removeChannel(sessionChannel);
+  await sb.auth.signOut();
+  currentUser = null;
+  showAuth();
+});
+
+async function lockSession(userId){
+  mySessionId = crypto.randomUUID();
+  await sb.from('active_sessions').upsert({ user_id: userId, session_id: mySessionId, updated_at: new Date().toISOString() });
+  sessionChannel = sb.channel('session-' + userId)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'active_sessions', filter: `user_id=eq.${userId}` },
+      (payload) => {
+        if(payload.new.session_id !== mySessionId){
+          alert('تم تسجيل الدخول لهذا الحساب من جهاز آخر، سيتم تسجيل خروجك الآن.');
+          sb.auth.signOut().then(() => { currentUser = null; showAuth(); });
+        }
+      })
+    .subscribe();
+}
+
+async function onLoggedIn(user){
+  currentUser = user;
+  await lockSession(user.id);
+  showApp();
+  await loadSubscribers();
+}
+
+(async function initApp(){
+  showLoading();
+  const { data } = await sb.auth.getSession();
+  if(data.session){ await onLoggedIn(data.session.user); }
+  else{ showAuth(); }
+})();
 
 function daysUntil(dateStr){
   const end = new Date(dateStr + 'T00:00:00');
-  const today = new Date();
-  today.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0,0,0,0);
   return Math.round((end - today) / 86400000);
 }
-
 function getStatus(sub){
-  const d = daysUntil(sub.end);
+  const d = daysUntil(sub.end_date);
   if(d < 0) return 'expired';
   if(d <= SOON_DAYS) return 'soon';
   return 'active';
 }
-
 function getDebt(sub){
   const amount = parseFloat(sub.amount) || 0;
   const paid = parseFloat(sub.paid) || 0;
   return Math.max(0, amount - paid);
 }
-
 function statusLabel(status, days){
   if(status === 'expired') return `منتهي منذ ${Math.abs(days)} يوم`;
   if(status === 'soon') return days === 0 ? 'ينتهي اليوم' : `يتبقى ${days} يوم`;
   return 'نشط';
+}
+
+async function loadSubscribers(){
+  const { data, error } = await sb.from('subscribers').select('*').order('end_date', { ascending: true });
+  if(error){ console.error(error); subscribers = []; }
+  else{ subscribers = data; }
+  render();
 }
 
 function renderStats(){
@@ -345,13 +309,11 @@ function renderStats(){
   const soon = subscribers.filter(s => getStatus(s) === 'soon').length;
   const expired = subscribers.filter(s => getStatus(s) === 'expired').length;
   const totalDebt = subscribers.reduce((sum, s) => sum + getDebt(s), 0);
-
   document.getElementById('stats').innerHTML = `
     <div class="stat good"><b>${active}</b><span>نشط</span></div>
     <div class="stat warn"><b>${soon}</b><span>قارب الانتهاء</span></div>
     <div class="stat bad"><b>${expired}</b><span>منتهي</span></div>
-    <div class="stat bad"><b>${totalDebt.toLocaleString('ar')}</b><span>إجمالي الديون</span></div>
-  `;
+    <div class="stat bad"><b>${totalDebt.toLocaleString('ar')}</b><span>إجمالي الديون</span></div>`;
 }
 
 function buildWhatsappLink(sub){
@@ -360,51 +322,40 @@ function buildWhatsappLink(sub){
   const phone = (sub.phone || '').replace(/[^0-9]/g, '');
   let msg = `مرحباً ${sub.name}،\n`;
   if(status === 'expired'){
-    msg += `نود إعلامكم بأن اشتراككم في "${sub.type}" قد انتهى بتاريخ ${sub.end}. نرجو التجديد في أقرب وقت.`;
+    msg += `نود إعلامكم بأن اشتراككم في "${sub.type}" قد انتهى بتاريخ ${sub.end_date}. نرجو التجديد في أقرب وقت.`;
   }else{
-    const d = daysUntil(sub.end);
-    msg += `نود تذكيركم بأن اشتراككم في "${sub.type}" سينتهي خلال ${d} يوم (بتاريخ ${sub.end}). نرجو التجديد قبل الانتهاء.`;
+    const d = daysUntil(sub.end_date);
+    msg += `نود تذكيركم بأن اشتراككم في "${sub.type}" سينتهي خلال ${d} يوم (بتاريخ ${sub.end_date}). نرجو التجديد قبل الانتهاء.`;
   }
-  if(debt > 0){
-    msg += `\nكما نود التنويه إلى وجود مبلغ متبقٍ قدره ${debt.toLocaleString('ar')}.`;
-  }
+  if(debt > 0) msg += `\nكما نود التنويه إلى وجود مبلغ متبقٍ قدره ${debt.toLocaleString('ar')}.`;
   msg += `\nشكراً لكم.`;
   return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
 }
 
 function matchesFilter(sub){
-  const status = getStatus(sub);
-  const debt = getDebt(sub);
+  const status = getStatus(sub); const debt = getDebt(sub);
   if(currentFilter === 'active') return status === 'active';
   if(currentFilter === 'soon') return status === 'soon';
   if(currentFilter === 'expired') return status === 'expired';
   if(currentFilter === 'debt') return debt > 0;
   return true;
 }
-
 function matchesSearch(sub){
   if(!searchTerm) return true;
   const t = searchTerm.toLowerCase();
   return (sub.name || '').toLowerCase().includes(t) || (sub.phone || '').includes(t);
 }
+function escapeHtml(str){ const div = document.createElement('div'); div.textContent = str || ''; return div.innerHTML; }
 
 function renderList(){
   const list = document.getElementById('list');
-  const items = subscribers
-    .filter(matchesFilter)
-    .filter(matchesSearch)
-    .sort((a,b) => daysUntil(a.end) - daysUntil(b.end));
-
+  const items = subscribers.filter(matchesFilter).filter(matchesSearch).sort((a,b) => daysUntil(a.end_date) - daysUntil(b.end_date));
   if(items.length === 0){
     list.innerHTML = `<div class="empty"><b>لا يوجد مشتركون هنا</b>جرّب تغيير الفلتر أو أضف مشتركاً جديداً</div>`;
     return;
   }
-
   list.innerHTML = items.map(sub => {
-    const status = getStatus(sub);
-    const days = daysUntil(sub.end);
-    const debt = getDebt(sub);
-    const badgeClass = status;
+    const status = getStatus(sub); const days = daysUntil(sub.end_date); const debt = getDebt(sub);
     return `
       <div class="card">
         <div class="card-top">
@@ -412,11 +363,11 @@ function renderList(){
             <div class="card-name">${escapeHtml(sub.name)}</div>
             <div class="card-type">${escapeHtml(sub.type || '—')}</div>
           </div>
-          <span class="badge ${badgeClass}">${statusLabel(status, days)}</span>
+          <span class="badge ${status}">${statusLabel(status, days)}</span>
         </div>
         <div class="card-meta">
           <span>📞 <b>${escapeHtml(sub.phone || '—')}</b></span>
-          <span>📅 ينتهي <b>${sub.end}</b></span>
+          <span>📅 ينتهي <b>${sub.end_date}</b></span>
           ${debt > 0 ? `<span class="debt-line">💰 دين متبقٍ: ${debt.toLocaleString('ar')}</span>` : ''}
         </div>
         <div class="card-actions">
@@ -424,37 +375,23 @@ function renderList(){
           <button onclick="openEdit('${sub.id}')">✏️ تعديل</button>
           <button class="del" onclick="deleteSub('${sub.id}')">🗑️ حذف</button>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 }
-
-function escapeHtml(str){
-  const div = document.createElement('div');
-  div.textContent = str || '';
-  return div.innerHTML;
-}
-
-function render(){
-  renderStats();
-  renderList();
-}
+function render(){ renderStats(); renderList(); }
 
 function sendWhatsapp(id){
   const sub = subscribers.find(s => s.id === id);
   if(!sub) return;
-  if(!sub.phone){
-    alert('لا يوجد رقم هاتف مسجل لهذا المشترك');
-    return;
-  }
+  if(!sub.phone){ alert('لا يوجد رقم هاتف مسجل لهذا المشترك'); return; }
   window.open(buildWhatsappLink(sub), '_blank');
 }
 
-function deleteSub(id){
+async function deleteSub(id){
   if(!confirm('هل أنت متأكد من حذف هذا المشترك؟')) return;
-  subscribers = subscribers.filter(s => s.id !== id);
-  saveData(subscribers);
-  render();
+  const { error } = await sb.from('subscribers').delete().eq('id', id);
+  if(error){ alert('تعذر الحذف'); return; }
+  await loadSubscribers();
 }
 
 function openEdit(id){
@@ -465,73 +402,60 @@ function openEdit(id){
   document.getElementById('f-name').value = sub.name || '';
   document.getElementById('f-phone').value = sub.phone || '';
   document.getElementById('f-type').value = sub.type || '';
-  document.getElementById('f-start').value = sub.start || '';
-  document.getElementById('f-end').value = sub.end || '';
+  document.getElementById('f-start').value = sub.start_date || '';
+  document.getElementById('f-end').value = sub.end_date || '';
   document.getElementById('f-amount').value = sub.amount || '';
   document.getElementById('f-paid').value = sub.paid || '';
   document.getElementById('f-notes').value = sub.notes || '';
   openSheet();
 }
-
-function openSheet(){
-  document.getElementById('overlay').classList.add('open');
-}
-function closeSheet(){
-  document.getElementById('overlay').classList.remove('open');
-  clearForm();
-}
+function openSheet(){ document.getElementById('overlay').classList.add('open'); }
+function closeSheet(){ document.getElementById('overlay').classList.remove('open'); clearForm(); }
 function clearForm(){
   document.getElementById('sheetTitle').textContent = 'إضافة مشترك';
   document.getElementById('editId').value = '';
-  ['f-name','f-phone','f-type','f-start','f-end','f-amount','f-paid','f-notes']
-    .forEach(id => document.getElementById(id).value = '');
+  ['f-name','f-phone','f-type','f-start','f-end','f-amount','f-paid','f-notes'].forEach(id => document.getElementById(id).value = '');
 }
 
 document.getElementById('openAdd').addEventListener('click', () => {
   clearForm();
-  const today = new Date().toISOString().slice(0,10);
-  document.getElementById('f-start').value = today;
+  document.getElementById('f-start').value = new Date().toISOString().slice(0,10);
   openSheet();
 });
 document.getElementById('cancelBtn').addEventListener('click', closeSheet);
-document.getElementById('overlay').addEventListener('click', (e) => {
-  if(e.target.id === 'overlay') closeSheet();
-});
+document.getElementById('overlay').addEventListener('click', (e) => { if(e.target.id === 'overlay') closeSheet(); });
 
-document.getElementById('saveBtn').addEventListener('click', () => {
+document.getElementById('saveBtn').addEventListener('click', async () => {
   const name = document.getElementById('f-name').value.trim();
-  const end = document.getElementById('f-end').value;
+  const end_date = document.getElementById('f-end').value;
   if(!name){ alert('يرجى إدخال اسم المشترك'); return; }
-  if(!end){ alert('يرجى إدخال تاريخ الانتهاء'); return; }
+  if(!end_date){ alert('يرجى إدخال تاريخ الانتهاء'); return; }
 
   const id = document.getElementById('editId').value;
   const record = {
-    id: id || (Date.now().toString(36) + Math.random().toString(36).slice(2,7)),
     name,
     phone: document.getElementById('f-phone').value.trim(),
     type: document.getElementById('f-type').value.trim(),
-    start: document.getElementById('f-start').value,
-    end,
-    amount: document.getElementById('f-amount').value,
-    paid: document.getElementById('f-paid').value,
+    start_date: document.getElementById('f-start').value || null,
+    end_date,
+    amount: parseFloat(document.getElementById('f-amount').value) || 0,
+    paid: parseFloat(document.getElementById('f-paid').value) || 0,
     notes: document.getElementById('f-notes').value.trim()
   };
 
+  let error;
   if(id){
-    subscribers = subscribers.map(s => s.id === id ? record : s);
+    ({ error } = await sb.from('subscribers').update(record).eq('id', id));
   }else{
-    subscribers.push(record);
+    record.user_id = currentUser.id;
+    ({ error } = await sb.from('subscribers').insert(record));
   }
-  saveData(subscribers);
+  if(error){ alert('تعذر الحفظ: ' + error.message); return; }
   closeSheet();
-  render();
+  await loadSubscribers();
 });
 
-document.getElementById('search').addEventListener('input', (e) => {
-  searchTerm = e.target.value;
-  renderList();
-});
-
+document.getElementById('search').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); });
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -540,8 +464,6 @@ document.querySelectorAll('.tab').forEach(tab => {
     renderList();
   });
 });
-
-render();
 </script>
 </body>
 </html>
