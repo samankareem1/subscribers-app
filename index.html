@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
   :root{
     --bg:#0F1B2D; --bg-elevated:#16263F; --bg-card:#1B2E4C; --border:#2B3F5E;
@@ -103,6 +104,15 @@
 
   .loading-screen{min-height:100vh; display:flex; align-items:center; justify-content:center; color:var(--ink-dim); font-size:14px;}
 
+  .qr-overlay{position:fixed; inset:0; background:rgba(6,10,18,.75); display:none; align-items:center; justify-content:center; z-index:60; padding:24px;}
+  .qr-overlay.open{display:flex;}
+  .qr-box{background:var(--bg-elevated); border:1px solid var(--border); border-radius:20px; padding:26px; text-align:center; max-width:320px; width:100%;}
+  .qr-box h3{font-family:var(--font-display); font-size:16px; margin-bottom:4px;}
+  .qr-box p{color:var(--ink-dim); font-size:12.5px; margin-bottom:16px;}
+  .qr-box canvas{border-radius:12px; margin:0 auto;}
+  .qr-close{margin-top:18px; width:100%; background:var(--gold); color:#1A1204; border:none; padding:12px; border-radius:12px; font-family:var(--font-display); font-weight:700; cursor:pointer;}
+  .card-actions.with-qr button{font-size:11.5px; padding:9px 4px;}
+
   @media (max-width:420px){ .stats{grid-template-columns:repeat(2,1fr);} }
 </style>
 </head>
@@ -156,6 +166,15 @@
   <main id="list"></main>
 
   <div class="fab"><button id="openAdd">+ إضافة مشترك</button></div>
+</div>
+
+<div class="qr-overlay" id="qrOverlay">
+  <div class="qr-box">
+    <h3 id="qrName"></h3>
+    <p>امسح هذا الباركود لفتح ملف المشترك مباشرة للتجديد</p>
+    <canvas id="qrCanvas"></canvas>
+    <button class="qr-close" id="qrCloseBtn">إغلاق</button>
+  </div>
 </div>
 
 <div class="sheet-overlay" id="overlay">
@@ -266,6 +285,7 @@ async function onLoggedIn(user){
   await lockSession(user.id);
   showApp();
   await loadSubscribers();
+  checkDeepLink();
 }
 
 (async function initApp(){
@@ -370,9 +390,10 @@ function renderList(){
           <span>📅 ينتهي <b>${sub.end_date}</b></span>
           ${debt > 0 ? `<span class="debt-line">💰 دين متبقٍ: ${debt.toLocaleString('ar')}</span>` : ''}
         </div>
-        <div class="card-actions">
+        <div class="card-actions with-qr">
           <button class="wa" onclick="sendWhatsapp('${sub.id}')">💬 واتساب</button>
           <button onclick="openEdit('${sub.id}')">✏️ تعديل</button>
+          <button onclick="showQr('${sub.id}')">📱 باركود</button>
           <button class="del" onclick="deleteSub('${sub.id}')">🗑️ حذف</button>
         </div>
       </div>`;
@@ -454,6 +475,34 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   closeSheet();
   await loadSubscribers();
 });
+
+/* ---------- الباركود ---------- */
+function showQr(id){
+  const sub = subscribers.find(s => s.id === id);
+  if(!sub) return;
+  const url = `${window.location.origin}${window.location.pathname}#sub=${sub.id}`;
+  document.getElementById('qrName').textContent = sub.name;
+  const canvas = document.getElementById('qrCanvas');
+  QRCode.toCanvas(canvas, url, { width: 220, margin: 1, color: { dark: '#0F1B2D', light: '#F4F1EA' } });
+  document.getElementById('qrOverlay').classList.add('open');
+}
+document.getElementById('qrCloseBtn').addEventListener('click', () => {
+  document.getElementById('qrOverlay').classList.remove('open');
+});
+document.getElementById('qrOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'qrOverlay') document.getElementById('qrOverlay').classList.remove('open');
+});
+
+/* عند فتح رابط يحتوي على مشترك محدد (من مسح باركود) */
+function checkDeepLink(){
+  const hash = window.location.hash;
+  if(hash.startsWith('#sub=')){
+    const id = hash.replace('#sub=', '');
+    const sub = subscribers.find(s => s.id === id);
+    if(sub){ openEdit(id); }
+    history.replaceState(null, '', window.location.pathname);
+  }
+}
 
 document.getElementById('search').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); });
 document.querySelectorAll('.tab').forEach(tab => {
