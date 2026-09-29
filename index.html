@@ -124,7 +124,7 @@
     .print-area{display:block !important; position:absolute; top:0; right:0; width:100%; padding:16px; direction:rtl; background:#fff !important; color:#111 !important;}
     .print-area h2{font-family:'Cairo', sans-serif; margin-bottom:12px; color:#111 !important;}
     .print-area table{width:100%; border-collapse:collapse; font-family:'Tajawal', sans-serif;}
-    .print-area th, .print-area td{border:1px solid #666; padding:6px 8px; font-size:11px; text-align:right; color:#111 !important;}
+    .print-area th, .print-area td{border:1px solid #666; padding:6px 8px; font-size:11px; text-align:center; color:#111 !important;}
     .print-area th{background:#E8A33D !important; color:#1A1204 !important; font-weight:700; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
     .print-area tr:nth-child(even) td{background:#f4f4f4 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
   }
@@ -576,9 +576,10 @@ document.getElementById('qrOverlay').addEventListener('click', (e) => {
 
 /* ---------- التصدير ---------- */
 async function exportExcel(){
-  const headers = ['الاسم','الهاتف','نوع الاشتراك','تاريخ البدء','تاريخ الانتهاء','الحالة','مبلغ الاشتراك','المدفوع','الدين المتبقي','ملاحظات'];
+  const headers = ['ت','الاسم','الهاتف','نوع الاشتراك','تاريخ البدء','تاريخ الانتهاء','الحالة','مبلغ الاشتراك','المدفوع','الدين المتبقي','ملاحظات'];
 
-  const dataRows = subscribers.map(s => [
+  const dataRows = subscribers.map((s, i) => [
+    i + 1,
     s.name,
     s.phone || '',
     s.type || '',
@@ -597,25 +598,32 @@ async function exportExcel(){
       const len = String(row[i] ?? '').length;
       if(len > max) max = len;
     });
-    return Math.min(38, max + 4);
+    return Math.min(38, Math.max(6, max + 4));
   });
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('المشتركون', { views: [{ rightToLeft: true }] });
   ws.columns = colWidths.map(w => ({ width: w }));
 
+  const reportDate = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+  const titleRow = ws.addRow([`تاريخ سحب التقرير: ${reportDate}`]);
+  ws.mergeCells(1, 1, 1, headers.length);
+  titleRow.height = 22;
+  titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+  titleRow.getCell(1).font = { bold: true, italic: true, color: { argb: 'FF444444' } };
+
   const headerRow = ws.addRow(headers);
   headerRow.eachCell(cell => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8A33D' } };
     cell.font = { bold: true, color: { argb: 'FF1A1204' } };
-    cell.alignment = { horizontal: 'right', vertical: 'middle' };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
     cell.border = { top:{style:'thin'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
   });
 
   dataRows.forEach((row, i) => {
     const r = ws.addRow(row);
     r.eachCell(cell => {
-      cell.alignment = { horizontal: 'right', vertical: 'middle' };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = { top:{style:'thin'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
       if(i % 2 === 1){ cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFF4F4F4'} }; }
     });
@@ -632,13 +640,16 @@ async function exportExcel(){
 }
 
 function exportPdf(){
-  let html = `<h2>قائمة المشتركين — ${new Date().toLocaleDateString('ar')}</h2>
+  const reportDate = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+  let html = `<h2>قائمة المشتركين</h2>
+    <p style="margin-bottom:10px; font-size:12px;">تاريخ سحب التقرير: ${reportDate}</p>
     <table><thead><tr>
-      <th>الاسم</th><th>الهاتف</th><th>النوع</th><th>ينتهي</th><th>الحالة</th><th>المبلغ</th><th>المدفوع</th><th>الدين</th>
+      <th>ت</th><th>الاسم</th><th>الهاتف</th><th>النوع</th><th>ينتهي</th><th>الحالة</th><th>المبلغ</th><th>المدفوع</th><th>الدين</th>
     </tr></thead><tbody>`;
-  subscribers.forEach(s => {
+  subscribers.forEach((s, i) => {
     const status = getStatus(s);
     html += `<tr>
+      <td>${i + 1}</td>
       <td>${escapeHtml(s.name)}</td>
       <td>${escapeHtml(s.phone || '')}</td>
       <td>${escapeHtml(s.type || '')}</td>
