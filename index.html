@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
   :root{
     --bg:#0F1B2D; --bg-elevated:#16263F; --bg-card:#1B2E4C; --border:#2B3F5E;
@@ -121,11 +121,12 @@
   @media print{
     body *{visibility:hidden;}
     .print-area, .print-area *{visibility:visible;}
-    .print-area{display:block !important; position:absolute; top:0; right:0; width:100%; padding:16px; direction:rtl;}
-    .print-area h2{font-family:'Cairo', sans-serif; margin-bottom:12px;}
+    .print-area{display:block !important; position:absolute; top:0; right:0; width:100%; padding:16px; direction:rtl; background:#fff !important; color:#111 !important;}
+    .print-area h2{font-family:'Cairo', sans-serif; margin-bottom:12px; color:#111 !important;}
     .print-area table{width:100%; border-collapse:collapse; font-family:'Tajawal', sans-serif;}
-    .print-area th, .print-area td{border:1px solid #999; padding:6px 8px; font-size:11px; text-align:right;}
-    .print-area th{background:#eee;}
+    .print-area th, .print-area td{border:1px solid #666; padding:6px 8px; font-size:11px; text-align:right; color:#111 !important;}
+    .print-area th{background:#E8A33D !important; color:#1A1204 !important; font-weight:700; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    .print-area tr:nth-child(even) td{background:#f4f4f4 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
   }
 
   @media (max-width:420px){ .stats{grid-template-columns:repeat(2,1fr);} }
@@ -574,23 +575,60 @@ document.getElementById('qrOverlay').addEventListener('click', (e) => {
 });
 
 /* ---------- التصدير ---------- */
-function exportExcel(){
-  const rows = subscribers.map(s => ({
-    'الاسم': s.name,
-    'الهاتف': s.phone || '',
-    'نوع الاشتراك': s.type || '',
-    'تاريخ البدء': s.start_date || '',
-    'تاريخ الانتهاء': s.end_date,
-    'الحالة': statusLabel(getStatus(s), daysUntil(s.end_date)),
-    'مبلغ الاشتراك': s.amount || 0,
-    'المدفوع': s.paid || 0,
-    'الدين المتبقي': getDebt(s),
-    'ملاحظات': s.notes || ''
-  }));
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'المشتركون');
-  XLSX.writeFile(wb, 'المشتركون.xlsx');
+async function exportExcel(){
+  const headers = ['الاسم','الهاتف','نوع الاشتراك','تاريخ البدء','تاريخ الانتهاء','الحالة','مبلغ الاشتراك','المدفوع','الدين المتبقي','ملاحظات'];
+
+  const dataRows = subscribers.map(s => [
+    s.name,
+    s.phone || '',
+    s.type || '',
+    s.start_date || '',
+    s.end_date,
+    statusLabel(getStatus(s), daysUntil(s.end_date)),
+    s.amount || 0,
+    s.paid || 0,
+    getDebt(s),
+    s.notes || ''
+  ]);
+
+  const colWidths = headers.map((h, i) => {
+    let max = h.length;
+    dataRows.forEach(row => {
+      const len = String(row[i] ?? '').length;
+      if(len > max) max = len;
+    });
+    return Math.min(38, max + 4);
+  });
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('المشتركون', { views: [{ rightToLeft: true }] });
+  ws.columns = colWidths.map(w => ({ width: w }));
+
+  const headerRow = ws.addRow(headers);
+  headerRow.eachCell(cell => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8A33D' } };
+    cell.font = { bold: true, color: { argb: 'FF1A1204' } };
+    cell.alignment = { horizontal: 'right', vertical: 'middle' };
+    cell.border = { top:{style:'thin'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
+  });
+
+  dataRows.forEach((row, i) => {
+    const r = ws.addRow(row);
+    r.eachCell(cell => {
+      cell.alignment = { horizontal: 'right', vertical: 'middle' };
+      cell.border = { top:{style:'thin'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
+      if(i % 2 === 1){ cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFF4F4F4'} }; }
+    });
+  });
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'المشتركون.xlsx';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function exportPdf(){
