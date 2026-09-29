@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg:#0F1B2D; --bg-elevated:#16263F; --bg-card:#1B2E4C; --border:#2B3F5E;
@@ -113,6 +114,20 @@
   .barcode-preview{margin-top:8px; max-width:140px; border-radius:8px; display:block; border:1px solid var(--border);}
   .barcode-upload-row{display:flex; align-items:center; gap:10px;}
 
+  .export-row{display:flex; gap:8px; padding:0 20px 12px;}
+  .export-btn{flex:1; background:var(--bg-elevated); border:1px solid var(--border); color:var(--ink); padding:10px; border-radius:12px; font-family:var(--font-body); font-size:12.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;}
+
+  .print-area{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    .print-area, .print-area *{visibility:visible;}
+    .print-area{display:block !important; position:absolute; top:0; right:0; width:100%; padding:16px; direction:rtl;}
+    .print-area h2{font-family:'Cairo', sans-serif; margin-bottom:12px;}
+    .print-area table{width:100%; border-collapse:collapse; font-family:'Tajawal', sans-serif;}
+    .print-area th, .print-area td{border:1px solid #999; padding:6px 8px; font-size:11px; text-align:right;}
+    .print-area th{background:#eee;}
+  }
+
   @media (max-width:420px){ .stats{grid-template-columns:repeat(2,1fr);} }
 </style>
 </head>
@@ -163,6 +178,11 @@
     </div>
   </div>
 
+  <div class="export-row">
+    <button class="export-btn" id="exportExcelBtn">📊 تصدير Excel</button>
+    <button class="export-btn" id="exportPdfBtn">🖨️ تصدير PDF</button>
+  </div>
+
   <main id="list"></main>
 
   <div class="fab"><button id="openAdd">+ إضافة مشترك</button></div>
@@ -175,6 +195,8 @@
     <button class="qr-close" id="qrCloseBtn">إغلاق</button>
   </div>
 </div>
+
+<div class="print-area" id="printArea"></div>
 
 <div class="sheet-overlay" id="overlay">
   <div class="sheet">
@@ -550,6 +572,52 @@ document.getElementById('qrCloseBtn').addEventListener('click', () => {
 document.getElementById('qrOverlay').addEventListener('click', (e) => {
   if(e.target.id === 'qrOverlay') document.getElementById('qrOverlay').classList.remove('open');
 });
+
+/* ---------- التصدير ---------- */
+function exportExcel(){
+  const rows = subscribers.map(s => ({
+    'الاسم': s.name,
+    'الهاتف': s.phone || '',
+    'نوع الاشتراك': s.type || '',
+    'تاريخ البدء': s.start_date || '',
+    'تاريخ الانتهاء': s.end_date,
+    'الحالة': statusLabel(getStatus(s), daysUntil(s.end_date)),
+    'مبلغ الاشتراك': s.amount || 0,
+    'المدفوع': s.paid || 0,
+    'الدين المتبقي': getDebt(s),
+    'ملاحظات': s.notes || ''
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'المشتركون');
+  XLSX.writeFile(wb, 'المشتركون.xlsx');
+}
+
+function exportPdf(){
+  let html = `<h2>قائمة المشتركين — ${new Date().toLocaleDateString('ar')}</h2>
+    <table><thead><tr>
+      <th>الاسم</th><th>الهاتف</th><th>النوع</th><th>ينتهي</th><th>الحالة</th><th>المبلغ</th><th>المدفوع</th><th>الدين</th>
+    </tr></thead><tbody>`;
+  subscribers.forEach(s => {
+    const status = getStatus(s);
+    html += `<tr>
+      <td>${escapeHtml(s.name)}</td>
+      <td>${escapeHtml(s.phone || '')}</td>
+      <td>${escapeHtml(s.type || '')}</td>
+      <td>${s.end_date}</td>
+      <td>${statusLabel(status, daysUntil(s.end_date))}</td>
+      <td>${s.amount || 0}</td>
+      <td>${s.paid || 0}</td>
+      <td>${getDebt(s)}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  document.getElementById('printArea').innerHTML = html;
+  window.print();
+}
+
+document.getElementById('exportExcelBtn').addEventListener('click', exportExcel);
+document.getElementById('exportPdfBtn').addEventListener('click', exportPdf);
 
 document.getElementById('search').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); });
 document.querySelectorAll('.tab').forEach(tab => {
