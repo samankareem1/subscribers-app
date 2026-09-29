@@ -16,6 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#0F1B2D; --bg-elevated:#16263F; --bg-card:#1B2E4C; --border:#2B3F5E;
@@ -48,7 +49,40 @@
   header.top{padding:22px 20px 18px; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; background:var(--bg); padding-top:calc(22px + env(safe-area-inset-top,0px)); display:flex; justify-content:space-between; align-items:flex-start;}
   header.top h1{font-family:var(--font-display); font-weight:900; font-size:22px;}
   header.top p{color:var(--ink-dim); font-size:13.5px; margin-top:4px;}
+  .brand-row{display:flex; align-items:center; gap:10px;}
+  .brand-logo{width:38px; height:38px; border-radius:10px; object-fit:cover; border:1px solid var(--border);}
   .logout-btn{background:transparent; border:1px solid var(--border); color:var(--ink-dim); font-size:12.5px; padding:8px 12px; border-radius:10px; cursor:pointer; font-family:var(--font-body); white-space:nowrap;}
+  .header-actions{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
+  .icon-btn{background:transparent; border:1px solid var(--border); color:var(--ink-dim); font-size:12px; padding:8px 10px; border-radius:10px; cursor:pointer; font-family:var(--font-body); white-space:nowrap;}
+
+  .reminder-banner{margin:0 20px 12px; background:rgba(232,163,61,.14); border:1px solid rgba(232,163,61,.4); border-radius:14px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .reminder-banner p{font-size:13px; color:var(--gold); font-weight:700;}
+  .reminder-banner button{background:var(--gold); color:#1A1204; border:none; padding:9px 14px; border-radius:10px; font-family:var(--font-display); font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap;}
+
+  .big-overlay{position:fixed; inset:0; background:var(--bg); display:none; flex-direction:column; z-index:70;}
+  .big-overlay.open{display:flex;}
+  .big-overlay-header{padding:18px 20px; padding-top:calc(18px + env(safe-area-inset-top,0px)); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
+  .big-overlay-header h2{font-family:var(--font-display); font-size:18px;}
+  .big-overlay-body{flex:1; overflow-y:auto; padding:16px 20px calc(24px + env(safe-area-inset-bottom,0px));}
+  .close-x{background:transparent; border:1px solid var(--border); color:var(--ink-dim); width:34px; height:34px; border-radius:10px; cursor:pointer; font-size:16px;}
+
+  .reminder-item{background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:12px 14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .reminder-item .ri-name{font-family:var(--font-display); font-weight:700; font-size:14.5px;}
+  .reminder-item .ri-sub{color:var(--ink-dim); font-size:12px; margin-top:2px;}
+  .reminder-item button{background:var(--green); color:#0B241A; border:none; padding:9px 12px; border-radius:10px; font-family:var(--font-body); font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap;}
+
+  .analytics-cards{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:20px;}
+  .a-card{background:var(--bg-elevated); border:1px solid var(--border); border-radius:14px; padding:14px; text-align:center;}
+  .a-card b{display:block; font-family:var(--font-display); font-size:19px;}
+  .a-card span{font-size:11.5px; color:var(--ink-dim);}
+  .chart-box{background:var(--bg-elevated); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:16px;}
+  .chart-box h3{font-family:var(--font-display); font-size:14px; margin-bottom:12px;}
+
+  .brand-form .field{margin-bottom:14px;}
+  .brand-form label{display:block; font-size:12.5px; color:var(--ink-dim); margin-bottom:5px;}
+  .brand-form input[type=text]{width:100%; background:var(--bg-elevated); border:1px solid var(--border); color:var(--ink); border-radius:10px; padding:11px 12px; font-family:var(--font-body); font-size:14.5px;}
+  .brand-form input[type=color]{width:60px; height:40px; border-radius:10px; border:1px solid var(--border); background:none; cursor:pointer;}
+  .brand-logo-preview{width:64px; height:64px; border-radius:14px; object-fit:cover; border:1px solid var(--border); margin-top:8px;}
 
   .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:16px 20px;}
   .stat{background:var(--bg-elevated); border:1px solid var(--border); border-radius:14px; padding:12px 10px; text-align:center;}
@@ -159,12 +193,24 @@
 
 <div id="mainApp" class="app hidden">
   <header class="top">
-    <div>
-      <h1>إدارة المشتركين</h1>
-      <p>متابعة الاشتراكات، المواعيد، والمستحقات</p>
+    <div class="brand-row">
+      <img id="brandLogo" class="brand-logo hidden" src="" alt="">
+      <div>
+        <h1 id="brandTitle">إدارة المشتركين</h1>
+        <p id="brandSubtitle">متابعة الاشتراكات، المواعيد، والمستحقات</p>
+      </div>
     </div>
-    <button class="logout-btn" id="logoutBtn">خروج</button>
+    <div class="header-actions">
+      <button class="icon-btn" id="openAnalytics">📊 تحليلات</button>
+      <button class="icon-btn" id="openBranding">⚙️ العلامة</button>
+      <button class="logout-btn" id="logoutBtn">خروج</button>
+    </div>
   </header>
+
+  <div class="reminder-banner hidden" id="reminderBanner">
+    <p id="reminderText"></p>
+    <button id="openReminders">عرض والإرسال</button>
+  </div>
 
   <div class="stats" id="stats"></div>
 
@@ -198,6 +244,55 @@
 </div>
 
 <div class="print-area" id="printArea"></div>
+
+<!-- نافذة التذكيرات -->
+<div class="big-overlay" id="remindersOverlay">
+  <div class="big-overlay-header">
+    <h2>التذكيرات المستحقة</h2>
+    <button class="close-x" id="closeReminders">✕</button>
+  </div>
+  <div class="big-overlay-body" id="remindersList"></div>
+</div>
+
+<!-- نافذة التحليلات -->
+<div class="big-overlay" id="analyticsOverlay">
+  <div class="big-overlay-header">
+    <h2>لوحة التحليلات</h2>
+    <button class="close-x" id="closeAnalytics">✕</button>
+  </div>
+  <div class="big-overlay-body">
+    <div class="analytics-cards" id="analyticsCards"></div>
+    <div class="chart-box"><h3>توزيع حالة الاشتراكات</h3><canvas id="statusChart"></canvas></div>
+    <div class="chart-box"><h3>المشتركون حسب نوع الاشتراك</h3><canvas id="typeChart"></canvas></div>
+  </div>
+</div>
+
+<!-- نافذة العلامة التجارية -->
+<div class="big-overlay" id="brandingOverlay">
+  <div class="big-overlay-header">
+    <h2>العلامة التجارية</h2>
+    <button class="close-x" id="closeBranding">✕</button>
+  </div>
+  <div class="big-overlay-body brand-form">
+    <div class="field">
+      <label>اسم النشاط التجاري (يظهر بدل "إدارة المشتركين")</label>
+      <input type="text" id="brand-name" placeholder="مثال: مؤسسة النور للاتصالات">
+    </div>
+    <div class="field">
+      <label>الشعار (اختياري)</label>
+      <input type="file" id="brand-logo-file" accept="image/*">
+      <img id="brandLogoPreview" class="brand-logo-preview hidden">
+    </div>
+    <div class="field">
+      <label>اللون الرئيسي للتطبيق</label>
+      <input type="color" id="brand-color" value="#E8A33D">
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="brandCancelBtn">إلغاء</button>
+      <button class="btn-save" id="brandSaveBtn">حفظ</button>
+    </div>
+  </div>
+</div>
 
 <div class="sheet-overlay" id="overlay">
   <div class="sheet">
@@ -313,6 +408,7 @@ async function onLoggedIn(user){
   currentUser = user;
   await lockSession(user.id);
   showApp();
+  await loadBusinessSettings();
   await loadSubscribers();
 }
 
@@ -437,7 +533,7 @@ function renderList(){
       </div>`;
   }).join('');
 }
-function render(){ renderStats(); renderList(); }
+function render(){ renderStats(); renderList(); renderReminderBanner(); }
 
 function sendWhatsapp(id){
   const sub = subscribers.find(s => s.id === id);
@@ -667,6 +763,154 @@ function exportPdf(){
 
 document.getElementById('exportExcelBtn').addEventListener('click', exportExcel);
 document.getElementById('exportPdfBtn').addEventListener('click', exportPdf);
+
+/* ---------- العلامة التجارية ---------- */
+let businessSettings = null;
+let brandLogoImage = null;
+
+async function loadBusinessSettings(){
+  const { data } = await sb.from('business_settings').select('*').eq('user_id', currentUser.id).maybeSingle();
+  businessSettings = data || null;
+  applyBranding();
+}
+
+function applyBranding(){
+  const name = businessSettings?.business_name;
+  const logo = businessSettings?.logo_image;
+  const color = businessSettings?.primary_color || '#E8A33D';
+  document.getElementById('brandTitle').textContent = name || 'إدارة المشتركين';
+  const logoEl = document.getElementById('brandLogo');
+  if(logo){ logoEl.src = logo; logoEl.classList.remove('hidden'); }
+  else{ logoEl.classList.add('hidden'); }
+  document.documentElement.style.setProperty('--gold', color);
+}
+
+document.getElementById('openBranding').addEventListener('click', () => {
+  document.getElementById('brand-name').value = businessSettings?.business_name || '';
+  document.getElementById('brand-color').value = businessSettings?.primary_color || '#E8A33D';
+  brandLogoImage = businessSettings?.logo_image || null;
+  const prev = document.getElementById('brandLogoPreview');
+  if(brandLogoImage){ prev.src = brandLogoImage; prev.classList.remove('hidden'); }
+  else{ prev.src = ''; prev.classList.add('hidden'); }
+  document.getElementById('brandingOverlay').classList.add('open');
+});
+document.getElementById('closeBranding').addEventListener('click', () => document.getElementById('brandingOverlay').classList.remove('open'));
+document.getElementById('brandCancelBtn').addEventListener('click', () => document.getElementById('brandingOverlay').classList.remove('open'));
+
+document.getElementById('brand-logo-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  brandLogoImage = await compressImage(file, 300, 0.75);
+  const prev = document.getElementById('brandLogoPreview');
+  prev.src = brandLogoImage; prev.classList.remove('hidden');
+});
+
+document.getElementById('brandSaveBtn').addEventListener('click', async () => {
+  const record = {
+    user_id: currentUser.id,
+    business_name: document.getElementById('brand-name').value.trim() || null,
+    logo_image: brandLogoImage,
+    primary_color: document.getElementById('brand-color').value,
+    updated_at: new Date().toISOString()
+  };
+  const { error } = await sb.from('business_settings').upsert(record);
+  if(error){ alert('تعذر حفظ الإعدادات: ' + error.message); return; }
+  businessSettings = record;
+  applyBranding();
+  document.getElementById('brandingOverlay').classList.remove('open');
+});
+
+/* ---------- التذكيرات ---------- */
+function getPendingReminders(){
+  return subscribers.filter(s => { const st = getStatus(s); return st === 'soon' || st === 'expired'; })
+    .sort((a,b) => daysUntil(a.end_date) - daysUntil(b.end_date));
+}
+
+function renderReminderBanner(){
+  const pending = getPendingReminders();
+  const banner = document.getElementById('reminderBanner');
+  if(pending.length === 0){ banner.classList.add('hidden'); return; }
+  document.getElementById('reminderText').textContent = `⚠️ لديك ${pending.length} مشترك يحتاج تذكيراً اليوم`;
+  banner.classList.remove('hidden');
+}
+
+function openRemindersModal(){
+  const pending = getPendingReminders();
+  const list = document.getElementById('remindersList');
+  if(pending.length === 0){
+    list.innerHTML = `<div class="empty"><b>لا توجد تذكيرات مستحقة</b>كل المشتركين ضمن الوضع الطبيعي حالياً</div>`;
+  }else{
+    list.innerHTML = pending.map(s => {
+      const status = getStatus(s); const days = daysUntil(s.end_date);
+      return `<div class="reminder-item">
+        <div>
+          <div class="ri-name">${escapeHtml(s.name)}</div>
+          <div class="ri-sub">${statusLabel(status, days)} — ${escapeHtml(s.phone || 'لا يوجد رقم')}</div>
+        </div>
+        <button onclick="sendWhatsapp('${s.id}')">💬 إرسال</button>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('remindersOverlay').classList.add('open');
+}
+document.getElementById('openReminders').addEventListener('click', openRemindersModal);
+document.getElementById('closeReminders').addEventListener('click', () => document.getElementById('remindersOverlay').classList.remove('open'));
+
+/* ---------- التحليلات ---------- */
+let statusChartInstance = null;
+let typeChartInstance = null;
+
+function openAnalyticsModal(){
+  const totalCollected = subscribers.reduce((sum, s) => sum + (parseFloat(s.paid) || 0), 0);
+  const totalExpected = subscribers.reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0);
+  const totalDebt = subscribers.reduce((sum, s) => sum + getDebt(s), 0);
+
+  document.getElementById('analyticsCards').innerHTML = `
+    <div class="a-card"><b>${subscribers.length}</b><span>إجمالي المشتركين</span></div>
+    <div class="a-card"><b>${totalCollected.toLocaleString('ar')}</b><span>إجمالي المحصّل</span></div>
+    <div class="a-card"><b>${totalExpected.toLocaleString('ar')}</b><span>إجمالي المتوقع</span></div>
+    <div class="a-card"><b>${totalDebt.toLocaleString('ar')}</b><span>إجمالي الديون</span></div>`;
+
+  const active = subscribers.filter(s => getStatus(s) === 'active').length;
+  const soon = subscribers.filter(s => getStatus(s) === 'soon').length;
+  const expired = subscribers.filter(s => getStatus(s) === 'expired').length;
+
+  const typeCounts = {};
+  subscribers.forEach(s => { const t = s.type || 'غير محدد'; typeCounts[t] = (typeCounts[t] || 0) + 1; });
+
+  if(statusChartInstance) statusChartInstance.destroy();
+  if(typeChartInstance) typeChartInstance.destroy();
+
+  const gold = getComputedStyle(document.documentElement).getPropertyValue('--gold').trim() || '#E8A33D';
+
+  statusChartInstance = new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['نشط', 'قارب الانتهاء', 'منتهي'],
+      datasets: [{ data: [active, soon, expired], backgroundColor: ['#4FAE83', gold, '#C1584B'] }]
+    },
+    options: { plugins: { legend: { labels: { color: '#F4F1EA' } } } }
+  });
+
+  typeChartInstance = new Chart(document.getElementById('typeChart'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(typeCounts),
+      datasets: [{ label: 'عدد المشتركين', data: Object.values(typeCounts), backgroundColor: gold }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#A9B6CC' }, grid: { color: '#2B3F5E' } },
+        y: { ticks: { color: '#A9B6CC' }, grid: { color: '#2B3F5E' }, beginAtZero: true }
+      }
+    }
+  });
+
+  document.getElementById('analyticsOverlay').classList.add('open');
+}
+document.getElementById('openAnalytics').addEventListener('click', openAnalyticsModal);
+document.getElementById('closeAnalytics').addEventListener('click', () => document.getElementById('analyticsOverlay').classList.remove('open'));
 
 document.getElementById('search').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); });
 document.querySelectorAll('.tab').forEach(tab => {
