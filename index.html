@@ -45,6 +45,7 @@
   .auth-msg{font-size:13px; text-align:center; margin-top:14px; padding:10px; border-radius:10px;}
   .auth-msg.error{background:rgba(193,88,75,.15); color:var(--rust);}
   .auth-msg.success{background:rgba(79,174,131,.15); color:var(--green);}
+  .forgot-link{text-align:center; color:var(--ink-dim); font-size:12.5px; margin-top:14px; cursor:pointer; text-decoration:underline;}
 
   header.top{padding:22px 20px 18px; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; background:var(--bg); padding-top:calc(22px + env(safe-area-inset-top,0px)); display:flex; justify-content:space-between; align-items:flex-start;}
   header.top h1{font-family:var(--font-display); font-weight:900; font-size:22px;}
@@ -194,7 +195,21 @@
       <input type="password" id="authPassword" placeholder="6 أحرف على الأقل">
     </div>
     <button class="auth-btn" id="authSubmit">دخول</button>
+    <p class="forgot-link" id="forgotPasswordLink">نسيت كلمة المرور؟</p>
     <div id="authMsg"></div>
+  </div>
+</div>
+
+<div id="resetScreen" class="auth-screen hidden">
+  <div class="auth-box">
+    <h1>تعيين كلمة مرور جديدة</h1>
+    <p class="sub">أدخل كلمة المرور الجديدة لحسابك</p>
+    <div class="auth-field">
+      <label>كلمة المرور الجديدة</label>
+      <input type="password" id="newPassword" placeholder="6 أحرف على الأقل">
+    </div>
+    <button class="auth-btn" id="resetSubmit">تحديث كلمة المرور</button>
+    <div id="resetMsg"></div>
   </div>
 </div>
 
@@ -370,8 +385,47 @@ function setAuthMode(mode){
   document.getElementById('tabSignup').classList.toggle('active', mode === 'signup');
   document.getElementById('authSubmit').textContent = mode === 'login' ? 'دخول' : 'إنشاء الحساب';
   document.getElementById('authMsg').innerHTML = '';
+  document.getElementById('forgotPasswordLink').classList.toggle('hidden', mode !== 'login');
 }
 function showAuthMsg(text, type){ document.getElementById('authMsg').innerHTML = `<div class="auth-msg ${type}">${text}</div>`; }
+
+document.getElementById('forgotPasswordLink').addEventListener('click', async () => {
+  const email = document.getElementById('authEmail').value.trim();
+  if(!email){ showAuthMsg('أدخل بريدك الإلكتروني أولاً في الحقل أعلاه، ثم اضغط "نسيت كلمة المرور؟"', 'error'); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  if(error){ showAuthMsg('تعذر إرسال رابط إعادة التعيين', 'error'); return; }
+  showAuthMsg('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني. افتحه واتبع التعليمات.', 'success');
+});
+
+sb.auth.onAuthStateChange((event, session) => {
+  if(event === 'PASSWORD_RECOVERY'){
+    loadingScreen.classList.add('hidden');
+    authScreen.classList.add('hidden');
+    mainApp.classList.add('hidden');
+    document.getElementById('resetScreen').classList.remove('hidden');
+  }
+});
+
+document.getElementById('resetSubmit').addEventListener('click', async () => {
+  const newPass = document.getElementById('newPassword').value;
+  if(!newPass || newPass.length < 6){
+    document.getElementById('resetMsg').innerHTML = `<div class="auth-msg error">كلمة المرور يجب أن تكون 6 أحرف على الأقل</div>`;
+    return;
+  }
+  const { error } = await sb.auth.updateUser({ password: newPass });
+  if(error){
+    document.getElementById('resetMsg').innerHTML = `<div class="auth-msg error">تعذر تحديث كلمة المرور</div>`;
+    return;
+  }
+  document.getElementById('resetMsg').innerHTML = `<div class="auth-msg success">تم تحديث كلمة المرور بنجاح! جاري الدخول...</div>`;
+  setTimeout(async () => {
+    document.getElementById('resetScreen').classList.add('hidden');
+    const { data } = await sb.auth.getSession();
+    if(data.session){ await onLoggedIn(data.session.user); } else { showAuth(); }
+  }, 1200);
+});
 
 document.getElementById('authSubmit').addEventListener('click', async () => {
   const email = document.getElementById('authEmail').value.trim();
