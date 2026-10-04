@@ -885,6 +885,7 @@ let statusChartInstance = null;
 let typeChartInstance = null;
 
 function openAnalyticsModal(){
+  document.getElementById('analyticsOverlay').classList.add('open');
   const totalCollected = subscribers.reduce((sum, s) => sum + (parseFloat(s.paid) || 0), 0);
   const totalExpected = subscribers.reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0);
   const totalDebt = subscribers.reduce((sum, s) => sum + getDebt(s), 0);
@@ -930,8 +931,6 @@ function openAnalyticsModal(){
       }
     }
   });
-
-  document.getElementById('analyticsOverlay').classList.add('open');
 }
 document.getElementById('openAnalytics').addEventListener('click', openAnalyticsModal);
 document.getElementById('closeAnalytics').addEventListener('click', () => document.getElementById('analyticsOverlay').classList.remove('open'));
