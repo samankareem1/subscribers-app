@@ -148,6 +148,13 @@
   .barcode-preview{margin-top:8px; max-width:140px; border-radius:8px; display:block; border:1px solid var(--border);}
   .barcode-upload-row{display:flex; align-items:center; gap:10px;}
 
+  .payment-add-row{display:flex; gap:8px;}
+  .payment-add-row input{flex:1; background:var(--bg); border:1px solid var(--border); color:var(--ink); border-radius:10px; padding:10px; font-family:var(--font-body); font-size:13.5px;}
+  .payment-add-row button{background:var(--green); color:#0B241A; border:none; padding:10px 12px; border-radius:10px; font-family:var(--font-body); font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap;}
+  #paymentsList{margin-top:10px; max-height:160px; overflow-y:auto;}
+  .payment-row{display:flex; justify-content:space-between; align-items:center; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:8px 10px; margin-bottom:6px; font-size:12.5px;}
+  .payment-row button{background:transparent; border:none; color:var(--rust); cursor:pointer; font-size:14px;}
+
   .export-row{display:flex; gap:8px; padding:0 20px 12px;}
   .export-btn{flex:1; background:var(--bg-elevated); border:1px solid var(--border); color:var(--ink); padding:10px; border-radius:12px; font-family:var(--font-body); font-size:12.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;}
 
@@ -316,6 +323,15 @@
         <input id="f-barcode-photo" type="file" accept="image/*">
       </div>
       <img id="barcodePreview" class="barcode-preview hidden">
+    </div>
+    <div class="field payments-section hidden" id="paymentsSection">
+      <label>سجل الدفعات</label>
+      <div class="payment-add-row">
+        <input id="pay-amount" type="number" inputmode="decimal" placeholder="مبلغ الدفعة">
+        <input id="pay-date" type="date">
+        <button id="addPaymentBtn" type="button">➕ تسجيل</button>
+      </div>
+      <div id="paymentsList"></div>
     </div>
     <div class="sheet-actions">
       <button class="btn-cancel" id="cancelBtn">إلغاء</button>
@@ -566,6 +582,12 @@ function openEdit(id){
   const preview = document.getElementById('barcodePreview');
   if(currentBarcodeImage){ preview.src = currentBarcodeImage; preview.classList.remove('hidden'); }
   else{ preview.src = ''; preview.classList.add('hidden'); }
+
+  document.getElementById('paymentsSection').classList.remove('hidden');
+  document.getElementById('pay-amount').value = '';
+  document.getElementById('pay-date').value = new Date().toISOString().slice(0,10);
+  loadPaymentsFor(sub.id).then(renderPaymentsList);
+
   openSheet();
 }
 function openSheet(){ document.getElementById('overlay').classList.add('open'); }
@@ -578,6 +600,8 @@ function clearForm(){
   currentBarcodeImage = null;
   const preview = document.getElementById('barcodePreview');
   preview.src = ''; preview.classList.add('hidden');
+  document.getElementById('paymentsSection').classList.add('hidden');
+  document.getElementById('paymentsList').innerHTML = '';
 }
 
 document.getElementById('openAdd').addEventListener('click', () => {
@@ -911,6 +935,59 @@ function openAnalyticsModal(){
 }
 document.getElementById('openAnalytics').addEventListener('click', openAnalyticsModal);
 document.getElementById('closeAnalytics').addEventListener('click', () => document.getElementById('analyticsOverlay').classList.remove('open'));
+
+/* ---------- سجل الدفعات ---------- */
+async function loadPaymentsFor(subscriberId){
+  const { data, error } = await sb.from('payments').select('*').eq('subscriber_id', subscriberId).order('payment_date', { ascending: false });
+  return error ? [] : data;
+}
+
+function renderPaymentsList(list){
+  const el = document.getElementById('paymentsList');
+  if(!list || list.length === 0){
+    el.innerHTML = `<p style="font-size:12px; color:var(--ink-dim);">لا توجد دفعات مسجّلة بعد</p>`;
+    return;
+  }
+  el.innerHTML = list.map(p => `
+    <div class="payment-row">
+      <span>${p.payment_date} — ${Number(p.amount).toLocaleString('ar')}</span>
+      <button onclick="deletePayment('${p.id}', ${p.amount})">🗑️</button>
+    </div>`).join('');
+}
+
+document.getElementById('addPaymentBtn').addEventListener('click', async () => {
+  const subId = document.getElementById('editId').value;
+  if(!subId) return;
+  const amount = parseFloat(document.getElementById('pay-amount').value);
+  const date = document.getElementById('pay-date').value;
+  if(!amount || amount <= 0){ alert('أدخل مبلغاً صحيحاً'); return; }
+  if(!date){ alert('أدخل تاريخ الدفعة'); return; }
+
+  const { error: payErr } = await sb.from('payments').insert({ subscriber_id: subId, user_id: currentUser.id, amount, payment_date: date });
+  if(payErr){ alert('تعذر تسجيل الدفعة: ' + payErr.message); return; }
+
+  const newPaid = (parseFloat(document.getElementById('f-paid').value) || 0) + amount;
+  document.getElementById('f-paid').value = newPaid;
+  await sb.from('subscribers').update({ paid: newPaid }).eq('id', subId);
+
+  document.getElementById('pay-amount').value = '';
+  renderPaymentsList(await loadPaymentsFor(subId));
+  await loadSubscribers();
+});
+
+async function deletePayment(paymentId, amount){
+  if(!confirm('هل تريد حذف هذه الدفعة؟')) return;
+  const subId = document.getElementById('editId').value;
+  const { error } = await sb.from('payments').delete().eq('id', paymentId);
+  if(error){ alert('تعذر الحذف'); return; }
+
+  const newPaid = Math.max(0, (parseFloat(document.getElementById('f-paid').value) || 0) - amount);
+  document.getElementById('f-paid').value = newPaid;
+  await sb.from('subscribers').update({ paid: newPaid }).eq('id', subId);
+
+  renderPaymentsList(await loadPaymentsFor(subId));
+  await loadSubscribers();
+}
 
 document.getElementById('search').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); });
 document.querySelectorAll('.tab').forEach(tab => {
